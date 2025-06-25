@@ -1,0 +1,102 @@
+{
+  "name": "pico-auth",
+  "version": "0.0.25",
+  "description": "Minimal auth with user/pass, impersonation and mfa authentication",
+  "main": "dist/pico-auth.umd.js",
+  "types": "dist/pico-auth.d.ts",
+  "module": "dist/pico-auth.esm.min.js",
+  "homepage": "https://github.com/alkeicam/pico-auth",
+  "bugs": {
+    "url": "https://github.com/alkeicam/pico-auth/issues"
+  },
+  "keywords": [
+    "impersonate",
+    "auth",
+    "mfa"
+  ],
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/pico-auth.d.ts",
+        "default": "./dist/pico-auth.umd.min.js"
+      },
+      "import": {
+        "types": "./dist/pico-auth.d.ts",
+        "default": "./dist/pico-auth.esm.min.js"
+      }
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist/*",
+    "docs": "typedoc --entryPointStrategy expand ./src && touch docs/.nojekyll",
+    "build": "date && npm run clean && npm run build:js -s && npm run build:minjs -s && npm run build:types -s",
+    "build:js": "rollup -c rollup.config.js",
+    "build:minjs": "npm run build:minjs:esm -s && npm run build:minjs:umd -s",
+    "build:minjs:umd": "terser dist/pico-auth.umd.js --compress --mangle > dist/pico-auth.umd.min.js",
+    "build:minjs:esm": "terser dist/pico-auth.esm.js --compress --mangle > dist/pico-auth.esm.min.js",
+    "build:types": "tsc -t esnext --moduleResolution node -d --emitDeclarationOnly --outFile dist/pico-auth.d.ts src/pico-auth.ts",
+    "test": "env TS_NODE_PROJECT=\"tsconfig-test.json\" mocha -r ts-node/register --require source-map-support/register --recursive **/test/**/*.test.ts",
+    "coverage": "nyc --reporter html --reporter text npm test",
+    "release-minor": "npm install && npm update && npm run build && npm run coverage && npm version minor && git push origin && git push origin --tags && npm publish",
+    "release-patch": "npm install && npm update && npm run build && npm version patch && npm publish"
+  },
+  "files": [
+    "dist"
+  ],
+  "author": "Al Keicam",
+  "license": "MIT",
+  "dependencies": {
+    "md5": "^2.3.0",
+    "speakeasy": "2.0.0",
+    "qrcode": "1.5.4",
+    "jsonwebtoken": "^8.5.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^6.1.0",
+    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-commonjs": "28.0.1",
+    "@types/chai": "4.2.14",
+    "@types/chai-as-promised": "7.1.3",
+    "@types/mocha": "8.0.3",
+    "@types/node": "20.5.0",
+    "@types/sinon": "9.0.8",
+    "@typescript-eslint/eslint-plugin": "4.6.1",
+    "@typescript-eslint/parser": "4.6.1",
+    "chai": "^3.5.0",
+    "chai-as-promised": "^6.0.0",
+    "eslint": "7.12.1",
+    "mocha": "^8.4.0",
+    "nyc": "14.1.x",
+    "prettier": "^2.8.8",
+    "pretty-quick": "^3.1.3",
+    "rollup": "^2.79.1",
+    "sinon": "^9.2.4",
+    "terser": "^5.19.2",
+    "ts-node": "10.8.2",
+    "tslib": "^2.6.2",
+    "typedoc": "^0.25.1",
+    "typescript": "^5.1.6",
+    "source-map-support": "^0.5.21",
+    "rimraf": "^5.0.5",
+    "shell-exec": "1.1.2"
+  },
+  "nyc": {
+    "check-coverage": true,
+    "branches": 100,
+    "lines": 100,
+    "functions": 100,
+    "statements": 100,
+    "extension": [
+      ".ts",
+      ".tsx"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "**/*.js",
+      "**/*.notest.ts",
+      "**/*.mock.ts",
+      "**/*.test.ts"
+    ],
+    "all": true
+  }
+}

@@ -1,0 +1,54 @@
+image: node:18
+
+stages:
+  - prepare
+  - verify
+  - publish
+
+install:
+  stage: prepare
+  interruptible: true
+  retry: 1
+  dependencies: []
+  artifacts:
+    name: 'deps_$CI_COMMIT_REF_SLUG'
+    paths:
+      - node_modules/
+      - dist/
+      - src/
+    when: on_success
+    expire_in: 2h
+  before_script:    
+    - npm install -g rimraf
+    - npm install -g rollup
+    - npm install -g terser
+    - npm install -g nyc
+    - npm install
+    - npm list --depth=0 || true
+  script:
+    - CI=false npm run build  
+
+# Runs the test suite.
+test:
+  stage: verify
+  interruptible: true
+  retry: 1
+  dependencies:
+    - install
+  script:
+    - npm run coverage
+
+# Publishes the package to npm.
+publish:
+  stage: publish
+  interruptible: false
+  retry: 1
+  dependencies:
+    - install
+  script:
+    - npm config set -- '//registry.npmjs.org/:_authToken' "${NPM_AUTH_TOKEN}"
+    - npm publish --verbose
+  resource_group: 'deployment-$CI_COMMIT_REF_SLUG'
+  only:
+    refs:      
+      - tags
