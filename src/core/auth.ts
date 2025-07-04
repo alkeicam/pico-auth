@@ -13,7 +13,11 @@ export interface UserProvider {
     putUser(user: any): Promise<any>
     userSecretPath?: string
     userPasswordPath?: string
+    // deprecated, use getUserPostAuthenticate() instead
     getSafeUser?(user: any): Promise<BaseUser> // when provided will be called to clear sensitive data from user object before encoding it into JWT token
+    // when provided will be called to eventually clear sensitive data from user object before encoding it into JWT token or to do some other operation
+    // this method (when provided) is called to generate the actual user data that will be encoded into token
+    getUserPostAuthenticate?(user: any): Promise<BaseUser> 
 }
 export interface ImpersonateProvider {
     canImpersonate(user:any, target:string): Promise<any>
@@ -104,7 +108,8 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
         // let jwtSecretKey = process.env.JWT_SECRET_KEY;
         let jwtSecretKey = jwtSpecs.secretKey
 
-        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;        
+        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
+        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
         
         let data = {
             time: Date.now(),                
