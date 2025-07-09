@@ -144,16 +144,15 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
     if(user && user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);
     if(requesterLogin && !user) throw new Error(`Failed card authentication attempt ${requesterLogin} (Missing user)`);    
 
+    let targetUser;
     try{
+        targetUser = await scratchCardProvider.consume(cardCode, user);            
+    }catch(error){        
+        // on any error we assume that it was a failed attempt
+        throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
+    }         
 
-        let targetUser;
-        try{
-            targetUser = await scratchCardProvider.consume(cardCode, user);            
-        }catch(error){        
-            // on any error we assume that it was a failed attempt
-            throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
-        }         
-
+    try{    
         if(!targetUser) throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
 
         // also check if the target user is not blocked
