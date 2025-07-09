@@ -174,7 +174,10 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
 
         console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
-        return token;
+        return {
+            token,
+            user: clearedUser
+        }
     }catch(error){        
         // on any error we assume that it was a failed attempt
         throw new Error(`Failed card authentication attempt ${requesterLogin}`);
