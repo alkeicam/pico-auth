@@ -24,7 +24,12 @@ export interface ImpersonateProvider {
     impersonateOrg(user: any, target: string): Promise<any>
 }
 
+export interface ScratchCardProvider {
+    consume(user:BaseUser, cardCode:string): Promise<BaseUser> // should return impersonation target user when impersonation is allowed and card was consumed successfully or throw an error otherwise
+}
+
 export interface BaseUser {
+    id?: string,
     blocked?: boolean
     [key: string]: any
 }
@@ -121,6 +126,57 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
         return token;
     }else{
         throw new Error(`Failed authentication attempt ${login}`)
+    }    
+}
+
+/**
+ * Allows to login using scratch card. As scratch card may provide a different user to log in to 
+ * it also allows to impersonate someone using scratch card.
+ * @param requesterLogin 
+ * @param cardCode 
+ * @param userProvider 
+ * @param scratchCardProvider 
+ * @param jwtSpecs 
+ * @returns 
+ */
+export const authenticateWithScratchCard = async (requesterLogin: string, cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs) => {
+    let user = await userProvider.getUser(requesterLogin);
+    if(user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);
+
+    try{
+
+        let targetUser;
+        try{
+            targetUser = await scratchCardProvider.consume(user, cardCode);            
+        }catch(error){        
+            // on any error we assume that it was a failed attempt
+            throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
+        }         
+
+        if(!targetUser) throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
+
+        // also check if the target user is not blocked
+        if(targetUser.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked as Target)`);
+
+        // ok so we will use targetUser as a user that will be actually logged in
+        // in impersonation scenario targetUser may be different then the user.
+
+        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(targetUser) : targetUser;
+        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
+        
+        let jwtSecretKey = jwtSpecs.secretKey                
+        let data = {
+            time: Date.now(),                
+            user: clearedUser
+        }                    
+        // const token = jwt.sign(data, jwtSecretKey, {expiresIn: process.env.JWT_EXPIRY_TIME});
+        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+
+        console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
+        return token;
+    }catch(error){        
+        // on any error we assume that it was a failed attempt
+        throw new Error(`Failed card authentication attempt ${requesterLogin}`);
     }    
 }
 /**
