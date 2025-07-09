@@ -25,7 +25,7 @@ export interface ImpersonateProvider {
 }
 
 export interface ScratchCardProvider {
-    consume(user:BaseUser, cardCode:string): Promise<BaseUser> // should return impersonation target user when impersonation is allowed and card was consumed successfully or throw an error otherwise
+    consume(cardCode:string, user?:BaseUser): Promise<BaseUser> // should return impersonation target user when impersonation is allowed and card was consumed successfully or throw an error otherwise
 }
 
 export interface BaseUser {
@@ -141,13 +141,13 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
  */
 export const authenticateWithScratchCard = async (requesterLogin: string, cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs) => {
     let user = await userProvider.getUser(requesterLogin);
-    if(user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);
+    if(user && user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);    
 
     try{
 
         let targetUser;
         try{
-            targetUser = await scratchCardProvider.consume(user, cardCode);            
+            targetUser = await scratchCardProvider.consume(cardCode, user);            
         }catch(error){        
             // on any error we assume that it was a failed attempt
             throw new Error(`Failed card authentication attempt ${requesterLogin} (Consume Failed)`);
