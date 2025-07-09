@@ -139,9 +139,10 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
  * @param jwtSpecs 
  * @returns 
  */
-export const authenticateWithScratchCard = async (requesterLogin: string, cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs) => {
-    let user = await userProvider.getUser(requesterLogin);
-    if(user && user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);    
+export const authenticateWithScratchCard = async (cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs, requesterLogin?: string) => {
+    let user = requesterLogin?await userProvider.getUser(requesterLogin):undefined;
+    if(user && user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);
+    if(requesterLogin && !user) throw new Error(`Failed card authentication attempt ${requesterLogin} (Missing user)`);    
 
     try{
 
