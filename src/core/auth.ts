@@ -176,7 +176,7 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
         return {
             token,
-            user: clearedUser
+            user: clearedUser // just in case its impersonation so the actual resultin user will be different that the requester login user
         }
     }catch(error){        
         // on any error we assume that it was a failed attempt
