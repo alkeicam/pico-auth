@@ -3,9 +3,12 @@ const qrcode = require('qrcode');
 const md5 = require("md5");
 const jwt = require('jsonwebtoken');
 
+
+
 export interface JWTSpecs {
     secretKey: string,
-    expiryTimeMs: any
+    expiryTimeMs: any,
+    refreshExpiryTimeMs?: any
 }
 
 export interface UserProvider {
@@ -121,9 +124,15 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
             user: clearedUser
         }                    
         // const token = jwt.sign(data, jwtSecretKey, {expiresIn: process.env.JWT_EXPIRY_TIME});
-        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});        
+        let refreshToken
+        if(jwtSpecs.refreshExpiryTimeMs) 
+            refreshToken = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.refreshExpiryTimeMs});
         console.log(`Successful login: ${user.id}`);
-        return token;
+        return {
+            token,
+            refreshToken
+        };
     }else{
         throw new Error(`Failed authentication attempt ${login}`)
     }    
@@ -181,6 +190,45 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         // on any error we assume that it was a failed attempt
         throw new Error(`Failed card authentication attempt ${requesterLogin}`);
     }    
+}
+/**
+ * When new short lived token is requested
+ * Provides longer lived refresh token to obtain new short lived token
+ * @param login 
+ * @param refreshToken 
+ * @param userProvider
+ * @param jwtSpecs 
+ * @returns short lived token
+ */
+export const refreshToken  = async (login:string, refreshToken:string, userProvider:UserProvider, jwtSpecs: JWTSpecs) => {
+    let user = await userProvider.getUser(login);
+ 
+    if(user.blocked) throw new Error(`Failed refresh token attempt ${login} (Blocked)`);
+
+    // validate refresh token
+    if(refreshToken) {
+        // let jwtSecretKey = process.env.JWT_SECRET_KEY;
+        let jwtSecretKey = jwtSpecs.secretKey
+        var decoded:any = jwt.verify(refreshToken, jwtSecretKey);
+        // put decoded auth context into request
+        const refreshTokenUser = decoded.user;
+        if(!refreshTokenUser || refreshTokenUser.id != user.id) {
+            throw new Error(`Failed refresh token attempt ${login} (Invalid Token)`);
+        }
+
+        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
+        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
+        
+        let data = {
+            time: Date.now(),                
+            user: clearedUser
+        }                    
+        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+        console.log(`Successful token refresh: ${user.id}`);
+        return {token: token};
+    }else{
+        throw new Error(`Failed refresh token attempt ${login}`)
+    }
 }
 /**
  * Will prepare user for MFA activation. Next step is to call verify with token generated in MFA app by the user.
