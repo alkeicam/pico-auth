@@ -19,7 +19,7 @@ Authenticates a user with login, password, and optionally an MFA token and imper
 ```ts
 import { authenticate } from 'pico-auth';
 
-const token = await authenticate(login, password, mfaToken, impersonateEntity, userProvider, impersonateProvider, jwtSpecs);
+const tokens = await authenticate(login, password, mfaToken, impersonateEntity, userProvider, impersonateProvider, jwtSpecs);
 ```
 
 - `login`: The user's login.
@@ -29,6 +29,22 @@ const token = await authenticate(login, password, mfaToken, impersonateEntity, u
 - `userProvider`: An object implementing the `UserProvider` interface.
 - `impersonateProvider`: An object implementing the `ImpersonateProvider` interface.
 - `jwtSpecs`: An object containing JWT specifications.
+- `tokens`: An returned object containing fields: short lived `token` and long lived `refreshToken`
+
+#### `refreshToken`
+
+Refresh token when new short lived token is requested
+
+```ts
+import { refreshToken } from 'pico-auth';
+
+const token = await refreshToken(login, refreshToken, userProvider, jwtSpecs);
+```
+
+- `login`: The user's login.
+- `userProvider`: An object implementing the `UserProvider` interface.
+- `jwtSpecs`: An object containing JWT specifications.
+- `token`: An returned object containing field: short lived `token`
 
 #### `mfaRegister`
 
