@@ -1,6 +1,6 @@
 {
   "name": "pico-auth",
-  "version": "0.0.32",
+  "version": "0.0.33",
   "description": "Minimal auth with user/pass, impersonation and mfa authentication",
   "main": "dist/pico-auth.umd.js",
   "types": "dist/pico-auth.d.ts",
