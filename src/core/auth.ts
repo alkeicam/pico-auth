@@ -37,6 +37,26 @@ export interface BaseUser {
     [key: string]: any
 }
 
+export const issueJwtToken = async (user: BaseUser, userProvider: UserProvider, jwtSpecs: JWTSpecs, issueRefreshToken: boolean) => {
+    let jwtSecretKey = jwtSpecs.secretKey
+    let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
+    clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;
+    let data = {
+        time: Date.now(),                
+        user: clearedUser
+    }
+    let token
+    if (issueRefreshToken && jwtSpecs.refreshExpiryTimeMs) {
+        token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.refreshExpiryTimeMs});
+    } else if (jwtSpecs.expiryTimeMs) {
+        token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+    }
+    return {
+        token,
+        clearedUser
+    };
+}
+
 /**
  * When mfaToken is provided
  */
@@ -113,21 +133,10 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
             console.info(`Impersonate success. From: ${originalUser.login} into ${target}`);
         }            
 
-        // let jwtSecretKey = process.env.JWT_SECRET_KEY;
-        let jwtSecretKey = jwtSpecs.secretKey
-
-        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
-        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
-        
-        let data = {
-            time: Date.now(),                
-            user: clearedUser
-        }                    
-        // const token = jwt.sign(data, jwtSecretKey, {expiresIn: process.env.JWT_EXPIRY_TIME});
-        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});        
+        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false)).token
         let refreshToken
         if(jwtSpecs.refreshExpiryTimeMs) 
-            refreshToken = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.refreshExpiryTimeMs});
+            refreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true)).token
         console.log(`Successful login: ${user.id}`);
         return {
             token,
@@ -170,21 +179,16 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         // ok so we will use targetUser as a user that will be actually logged in
         // in impersonation scenario targetUser may be different then the user.
 
-        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(targetUser) : targetUser;
-        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
-        
-        let jwtSecretKey = jwtSpecs.secretKey                
-        let data = {
-            time: Date.now(),                
-            user: clearedUser
-        }                    
-        // const token = jwt.sign(data, jwtSecretKey, {expiresIn: process.env.JWT_EXPIRY_TIME});
-        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+        const token = (await issueJwtToken(targetUser, userProvider, jwtSpecs, false)).token
+        let refreshToken
+        if(jwtSpecs.refreshExpiryTimeMs) 
+            refreshToken = (await issueJwtToken(targetUser, userProvider, jwtSpecs, true)).token
 
         console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
         return {
             token,
-            user: clearedUser // just in case its impersonation so the actual resultin user will be different that the requester login user
+            refreshToken,
+            user: token.clearedUser // just in case its impersonation so the actual resulting user will be different that the requester login user
         }
     }catch(error){        
         // on any error we assume that it was a failed attempt
@@ -216,16 +220,9 @@ export const refreshToken  = async (login:string, refreshToken:string, userProvi
             throw new Error(`Failed refresh token attempt ${login} (Invalid Token)`);
         }
 
-        let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
-        clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;        
-        
-        let data = {
-            time: Date.now(),                
-            user: clearedUser
-        }                    
-        const token = jwt.sign(data, jwtSecretKey, {expiresIn: jwtSpecs.expiryTimeMs});
+        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false)).token
         console.log(`Successful token refresh: ${user.id}`);
-        return {token: token};
+        return { token };
     }else{
         throw new Error(`Failed refresh token attempt ${login}`)
     }

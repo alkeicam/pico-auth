@@ -87,6 +87,21 @@ const isEnabled = await mfaEnabled(login, userProvider);
 - `login`: The user's login.
 - `userProvider`: An object implementing the `UserProvider` interface.
 
+#### `issueJwtToken`
+
+Issues JWT token (access-token or refresh-token) for given user under provided specs.
+```ts
+import { issueJwtToken } from 'pico-auth';
+
+const token = await issueJwtToken(user, userProvider, jwtSpecs, issueRefreshToken);
+```
+
+- `user`: The user object.
+- `userProvider`: An object implementing the `UserProvider` interface.
+- `jwtSpecs`: An object containing JWT specifications.
+- `issueRefreshToken`: Boolean value that controls wheter returned token should be created using base specs (false) or refresh specs (true). 
+- `token`: An returned object containing short lived `token` or long lived `refreshToken`
+
 ### Types
 
 #### `UserProvider`
