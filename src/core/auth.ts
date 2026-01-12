@@ -221,8 +221,12 @@ export const refreshToken  = async (login:string, refreshToken:string, userProvi
         }
 
         const token = (await issueJwtToken(user, userProvider, jwtSpecs, false)).token
+        let newRefreshToken
+        if(jwtSpecs.refreshExpiryTimeMs) 
+            newRefreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true)).token
+
         console.log(`Successful token refresh: ${user.id}`);
-        return { token };
+        return { token, refreshToken: newRefreshToken };
     }else{
         throw new Error(`Failed refresh token attempt ${login}`)
     }
