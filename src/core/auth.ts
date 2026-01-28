@@ -179,16 +179,16 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         // ok so we will use targetUser as a user that will be actually logged in
         // in impersonation scenario targetUser may be different then the user.
 
-        const token = (await issueJwtToken(targetUser, userProvider, jwtSpecs, false)).token
+        const jwtData = await issueJwtToken(targetUser, userProvider, jwtSpecs, false)
         let refreshToken
         if(jwtSpecs.refreshExpiryTimeMs) 
             refreshToken = (await issueJwtToken(targetUser, userProvider, jwtSpecs, true)).token
 
         console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
         return {
-            token,
+            token: jwtData.token,
             refreshToken,
-            user: token.clearedUser // just in case its impersonation so the actual resulting user will be different that the requester login user
+            user: jwtData.clearedUser // just in case its impersonation so the actual resulting user will be different that the requester login user
         }
     }catch(error){        
         // on any error we assume that it was a failed attempt
