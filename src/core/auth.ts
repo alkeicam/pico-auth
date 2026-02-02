@@ -11,6 +11,10 @@ export interface JWTSpecs {
     refreshExpiryTimeMs?: any
 }
 
+export interface AuxData {
+    [key: string]: any
+}
+
 export interface UserProvider {
     getUser(login: string): Promise<BaseUser>
     putUser(user: any): Promise<any>
@@ -37,13 +41,21 @@ export interface BaseUser {
     [key: string]: any
 }
 
-export const issueJwtToken = async (user: BaseUser, userProvider: UserProvider, jwtSpecs: JWTSpecs, issueRefreshToken: boolean) => {
+export const issueJwtToken = async (user: BaseUser, userProvider: UserProvider, jwtSpecs: JWTSpecs, issueRefreshToken: boolean, aux?: AuxData) => {
     let jwtSecretKey = jwtSpecs.secretKey
     let clearedUser = userProvider.getSafeUser? await userProvider.getSafeUser(user) : user;
     clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;
+    if(issueRefreshToken && !aux){
+        aux = {
+            scenario: "REFRESH"
+        };
+    } else if(issueRefreshToken && aux){
+        aux['scenario'] = aux['scenario'] || "REFRESH";
+    }
     let data = {
         time: Date.now(),                
-        user: clearedUser
+        user: clearedUser,
+        aux: aux
     }
     let token
     if (issueRefreshToken && jwtSpecs.refreshExpiryTimeMs) {
@@ -60,7 +72,7 @@ export const issueJwtToken = async (user: BaseUser, userProvider: UserProvider, 
 /**
  * When mfaToken is provided
  */
-export const authenticate = async (login:string, password:string, mfaToken:string, impersonateEntity:string, userProvider:UserProvider, impersonateProvider:any, jwtSpecs: JWTSpecs) => {
+export const authenticate = async (login:string, password:string, mfaToken:string, impersonateEntity:string, userProvider:UserProvider, impersonateProvider:any, jwtSpecs: JWTSpecs, aux?: AuxData) => {
     let user = await userProvider.getUser(login);
 
     const mfaInfo = userProvider.userSecretPath?user[userProvider.userSecretPath]:user.mfa;
@@ -133,10 +145,10 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
             console.info(`Impersonate success. From: ${originalUser.login} into ${target}`);
         }            
 
-        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false)).token
+        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false, aux)).token
         let refreshToken
         if(jwtSpecs.refreshExpiryTimeMs) 
-            refreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true)).token
+            refreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true, aux)).token
         console.log(`Successful login: ${user.id}`);
         return {
             token,
@@ -157,7 +169,7 @@ export const authenticate = async (login:string, password:string, mfaToken:strin
  * @param jwtSpecs 
  * @returns 
  */
-export const authenticateWithScratchCard = async (cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs, requesterLogin?: string) => {
+export const authenticateWithScratchCard = async (cardCode: string, userProvider:UserProvider, scratchCardProvider: ScratchCardProvider, jwtSpecs: JWTSpecs, requesterLogin?: string, aux?: AuxData)  => {
     let user = requesterLogin?await userProvider.getUser(requesterLogin):undefined;
     if(user && user.blocked) throw new Error(`Failed card authentication attempt ${requesterLogin} (Blocked)`);
     if(requesterLogin && !user) throw new Error(`Failed card authentication attempt ${requesterLogin} (Missing user)`);    
@@ -179,10 +191,10 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
         // ok so we will use targetUser as a user that will be actually logged in
         // in impersonation scenario targetUser may be different then the user.
 
-        const jwtData = await issueJwtToken(targetUser, userProvider, jwtSpecs, false)
+        const jwtData = await issueJwtToken(targetUser, userProvider, jwtSpecs, false, aux);
         let refreshToken
         if(jwtSpecs.refreshExpiryTimeMs) 
-            refreshToken = (await issueJwtToken(targetUser, userProvider, jwtSpecs, true)).token
+            refreshToken = (await issueJwtToken(targetUser, userProvider, jwtSpecs, true, aux)).token
 
         console.info(`Card authentication success. Requester:${requesterLogin} Target:${targetUser.id}`);
         return {
@@ -204,7 +216,7 @@ export const authenticateWithScratchCard = async (cardCode: string, userProvider
  * @param jwtSpecs 
  * @returns short lived token
  */
-export const refreshToken  = async (login:string, refreshToken:string, userProvider:UserProvider, jwtSpecs: JWTSpecs) => {
+export const refreshToken  = async (login:string, refreshToken:string, userProvider:UserProvider, jwtSpecs: JWTSpecs, aux?: AuxData) => {
     let user = await userProvider.getUser(login);
  
     if(user.blocked) throw new Error(`Failed refresh token attempt ${login} (Blocked)`);
@@ -220,10 +232,10 @@ export const refreshToken  = async (login:string, refreshToken:string, userProvi
             throw new Error(`Failed refresh token attempt ${login} (Invalid Token)`);
         }
 
-        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false)).token
+        const token = (await issueJwtToken(user, userProvider, jwtSpecs, false, aux)).token
         let newRefreshToken
         if(jwtSpecs.refreshExpiryTimeMs) 
-            newRefreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true)).token
+            newRefreshToken = (await issueJwtToken(user, userProvider, jwtSpecs, true, aux)).token
 
         console.log(`Successful token refresh: ${user.id}`);
         return { token, refreshToken: newRefreshToken };
