@@ -43,7 +43,10 @@ export const issueJwtToken = async (user: BaseUser, userProvider: UserProvider, 
     clearedUser = userProvider.getUserPostAuthenticate? await userProvider.getUserPostAuthenticate(clearedUser) : clearedUser;
     let data = {
         time: Date.now(),                
-        user: clearedUser
+        user: clearedUser,
+        aux: {
+            scenario: issueRefreshToken ? "REFRESH" : undefined
+        }
     }
     let token
     if (issueRefreshToken && jwtSpecs.refreshExpiryTimeMs) {
