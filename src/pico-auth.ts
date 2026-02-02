@@ -2,4 +2,4 @@
 // @ts-ignore
 export { mfaRegister, mfaVerify, mfaEnabled, authenticate, authenticateWithScratchCard, refreshToken, issueJwtToken } from "./core/auth"
 // @ts-ignore
-export type { UserProvider, ImpersonateProvider, JWTSpecs, ScratchCardProvider, BaseUser } from "./core/auth"
+export type { UserProvider, ImpersonateProvider, JWTSpecs, ScratchCardProvider, BaseUser, AuxData } from "./core/auth"
