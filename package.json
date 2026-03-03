@@ -50,7 +50,7 @@
     "md5": "^2.3.0",
     "speakeasy": "2.0.0",
     "qrcode": "1.5.4",
-    "jsonwebtoken": "^8.5.1"
+    "jsonwebtoken": "~9.0.3"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^6.1.0",
